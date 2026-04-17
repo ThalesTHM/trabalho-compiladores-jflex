@@ -1,0 +1,22 @@
+program P
+
+class Teste {
+  int v1;
+  float v2;
+}
+
+/* este é um comentário
+   de várias linhas */
+
+{
+
+  void main()
+  {
+    Teste t = new Teste;
+    t.v1 = 123;
+    t.v2 = 4.56;
+    print(t.v1, 5);
+    print(t.v2, 0x10);
+  }
+
+}
