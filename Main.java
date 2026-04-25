@@ -1,15 +1,15 @@
 import java.io.*;
 
-public class Main {
+class Main {
     public static void main(String[] args) throws Exception {
-        if (args.length < 1) {
-            System.out.println("Uso: java Main <arquivo>");
-            System.exit(1);
+        // Lendo a entrada pelo teclado
+        Scanner scanner = new Scanner(System.in);
+        parser parser = new parser(scanner);
+        try {
+            parser.parse();
+            System.out.println("Arquivo sem erros de sintaxe!");
+        } catch (Exception e) {
+            System.out.println("Erro de sintaxe: " + e);
         }
-
-        FileReader reader = new FileReader(args[0]);
-        Scanner scanner = new Scanner(reader);
-        scanner.yylex();
-        reader.close();
     }
 }

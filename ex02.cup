@@ -1,0 +1,30 @@
+import java_cup.runtime.*;
+
+terminal           PTVIRG, MAIS, MENOS, DIV, MULT, MOD, ABRE, FECHA;
+terminal   Double  INTEIRO;
+non terminal Double expr_list, expr_ptv, expr, primary;
+
+expr_list ::= expr_list expr_ptv
+            | expr_ptv;
+
+expr_ptv ::= expr:e {: System.out.println("Resultado = " + e); :} PTVIRG;
+
+expr ::= primary:n MAIS expr:e
+            {: RESULT = new Double(n.doubleValue() + e.doubleValue()); :}
+       | primary:n MENOS expr:e
+            {: RESULT = new Double(n.doubleValue() - e.doubleValue()); :}
+       | primary:n MULT expr:e
+            {: RESULT = new Double(n.doubleValue() * e.doubleValue()); :}
+       | primary:n DIV expr:e
+            {: RESULT = new Double(n.doubleValue() / e.doubleValue()); :}
+       | primary:n MOD expr:e
+            {: RESULT = new Double(n.doubleValue() % e.doubleValue()); :}
+       | primary:n
+            {: RESULT = new Double(n.doubleValue()); :}
+       ;
+
+primary ::= INTEIRO:n
+                {: RESULT = new Double(n.doubleValue()); :}
+          | ABRE expr:e FECHA
+                {: RESULT = new Double(e.doubleValue()); :}
+          ;

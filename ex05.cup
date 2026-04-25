@@ -1,0 +1,36 @@
+import java_cup.runtime.*;
+
+terminal           PTVIRG, MAIS, MENOS, DIV, MULT, MOD;
+terminal   Double  INTEIRO;
+non terminal Double expr_list, expr_ptv, expr;
+
+expr_list ::= expr_list expr_ptv
+            | expr_ptv;
+
+expr_ptv ::= expr:e {: System.out.println("Resultado = " + e); :} PTVIRG;
+
+expr ::= INTEIRO:n MAIS expr:e
+            {: RESULT = new Double(n.doubleValue() + e.doubleValue()); :}
+       | INTEIRO:n MENOS expr:e
+            {: RESULT = new Double(n.doubleValue() - e.doubleValue()); :}
+       | INTEIRO:n MULT expr:e
+            {: RESULT = new Double(n.doubleValue() * e.doubleValue()); :}
+       | INTEIRO:n DIV expr:e
+            {:
+                if (e != null && e.doubleValue() == 0.0) {
+                    System.out.println("Error - Denominador invalido.");
+                } else {
+                    RESULT = new Double(n.doubleValue() / e.doubleValue());
+                }
+            :}
+       | INTEIRO:n MOD expr:e
+            {:
+                if (n.doubleValue() % 1 != 0 || (e != null && e.doubleValue() % 1 != 0)) {
+                    System.out.println("Error - MOD so aceita valores inteiros.");
+                } else {
+                    RESULT = new Double(n.doubleValue() % e.doubleValue());
+                }
+            :}
+       | INTEIRO:n
+            {: RESULT = new Double(n.doubleValue()); :}
+       ;
