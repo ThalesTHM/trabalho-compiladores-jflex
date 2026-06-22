@@ -1,16 +1,38 @@
-import java.io.*;
+package scanner;
+
+import java_cup.runtime.*;
+import erros.ListaErros;
+import parser.sym;
 
 %%
 
 %class Scanner
+%public
 %unicode
 %line
 %column
-%int
+%cup
 
 %{
-  private void token(String tipo, String valor) {
-    System.out.println("[" + (yyline + 1) + "," + (yycolumn + 1) + "] " + tipo + ": " + valor);
+  private ListaErros listaErros;
+
+  public Scanner(java.io.Reader in, ListaErros listaErros) {
+    this(in);
+    this.listaErros = listaErros;
+  }
+
+  private Symbol criaSimbolo(int tipo) {
+    return new Symbol(tipo, yyline + 1, yycolumn + 1);
+  }
+
+  private Symbol criaSimbolo(int tipo, Object valor) {
+    return new Symbol(tipo, yyline + 1, yycolumn + 1, valor);
+  }
+
+  private void defineErro(String mensagem) {
+    if (listaErros != null) {
+      listaErros.adicionar(yyline + 1, yycolumn + 1, "Lexico - " + mensagem);
+    }
   }
 %}
 
@@ -24,81 +46,70 @@ hexDigito = [0-9a-fA-F]
 
 <YYINITIAL> {
 
-  /* Palavras reservadas */
-  "program"     { token("palavra reservada", yytext()); }
-  "break"       { token("palavra reservada", yytext()); }
-  "class"       { token("palavra reservada", yytext()); }
-  "else"        { token("palavra reservada", yytext()); }
-  "final"       { token("palavra reservada", yytext()); }
-  "if"          { token("palavra reservada", yytext()); }
-  "new"         { token("palavra reservada", yytext()); }
-  "print"       { token("palavra reservada", yytext()); }
-  "read"        { token("palavra reservada", yytext()); }
-  "return"      { token("palavra reservada", yytext()); }
-  "void"        { token("palavra reservada", yytext()); }
-  "while"       { token("palavra reservada", yytext()); }
-  "int"         { token("palavra reservada", yytext()); }
-  "char"        { token("palavra reservada", yytext()); }
-  "float"       { token("palavra reservada", yytext()); }
-  "null"        { token("palavra reservada", yytext()); }
+  "program"     { return criaSimbolo(sym.PROGRAM, yytext()); }
+  "break"       { return criaSimbolo(sym.BREAK, yytext()); }
+  "class"       { return criaSimbolo(sym.CLASS, yytext()); }
+  "else"        { return criaSimbolo(sym.ELSE, yytext()); }
+  "final"       { return criaSimbolo(sym.FINAL, yytext()); }
+  "if"          { return criaSimbolo(sym.IF, yytext()); }
+  "new"         { return criaSimbolo(sym.NEW, yytext()); }
+  "print"       { return criaSimbolo(sym.PRINT, yytext()); }
+  "read"        { return criaSimbolo(sym.READ, yytext()); }
+  "return"      { return criaSimbolo(sym.RETURN, yytext()); }
+  "void"        { return criaSimbolo(sym.VOID, yytext()); }
+  "while"       { return criaSimbolo(sym.WHILE, yytext()); }
+  "int"         { return criaSimbolo(sym.INT, yytext()); }
+  "char"        { return criaSimbolo(sym.CHAR, yytext()); }
+  "float"       { return criaSimbolo(sym.FLOAT, yytext()); }
+  "null"        { return criaSimbolo(sym.NULL, yytext()); }
 
-  /* Identificadores */
-  {letra}({letra}|{digito}|_)*    { token("identificador", yytext()); }
+  {letra}({letra}|{digito}|_)*    { return criaSimbolo(sym.IDENT, yytext()); }
 
-  /* Números hexadecimais (0x minúsculo + pelo menos 1 hex dígito) */
-  "0x"{hexDigito}+                { token("n\u00FAmero hexadecimal", yytext()); }
+  "0x"{hexDigito}+                { return criaSimbolo(sym.NUMBER, Integer.parseInt(yytext().substring(2), 16)); }
 
-  /* Números reais (dígitos.dígitos, ambos os lados obrigatórios) */
-  {digito}+"."{digito}+           { token("n\u00FAmero real", yytext()); }
+  {digito}+"."{digito}+           { return criaSimbolo(sym.FLOATNUM, Float.parseFloat(yytext())); }
 
-  /* Números inteiros */
-  {digito}+                       { token("n\u00FAmero inteiro", yytext()); }
+  {digito}+                       { return criaSimbolo(sym.NUMBER, Integer.parseInt(yytext())); }
 
-  /* Comentario de uma linha */
-  "//"[^\r\n]*                    { /* ignorar */ }
+  "//"[^\r\n]*                    { /* ignorar comentario de linha */ }
 
-  /* Inicio de comentario de multiplas linhas */
   "/*"                            { yybegin(COMMENT); }
 
-  /* Símbolos compostos (devem vir antes dos simples) */
-  "=="    { token("s\u00EDmbolo", yytext()); }
-  "!="    { token("s\u00EDmbolo", yytext()); }
-  "<="    { token("s\u00EDmbolo", yytext()); }
-  ">="    { token("s\u00EDmbolo", yytext()); }
-  "&&"    { token("s\u00EDmbolo", yytext()); }
-  "||"    { token("s\u00EDmbolo", yytext()); }
-  "++"    { token("s\u00EDmbolo", yytext()); }
-  "--"    { token("s\u00EDmbolo", yytext()); }
+  "=="    { return criaSimbolo(sym.EQL, yytext()); }
+  "!="    { return criaSimbolo(sym.NEQ, yytext()); }
+  "<="    { return criaSimbolo(sym.LEQ, yytext()); }
+  ">="    { return criaSimbolo(sym.GEQ, yytext()); }
+  "&&"    { return criaSimbolo(sym.AND, yytext()); }
+  "||"    { return criaSimbolo(sym.OR, yytext()); }
+  "++"    { return criaSimbolo(sym.INC, yytext()); }
+  "--"    { return criaSimbolo(sym.DEC, yytext()); }
 
-  /* Símbolos simples */
-  "+"     { token("s\u00EDmbolo", yytext()); }
-  "-"     { token("s\u00EDmbolo", yytext()); }
-  "*"     { token("s\u00EDmbolo", yytext()); }
-  "/"     { token("s\u00EDmbolo", yytext()); }
-  "%"     { token("s\u00EDmbolo", yytext()); }
-  "="     { token("s\u00EDmbolo", yytext()); }
-  "<"     { token("s\u00EDmbolo", yytext()); }
-  ">"     { token("s\u00EDmbolo", yytext()); }
-  "("     { token("s\u00EDmbolo", yytext()); }
-  ")"     { token("s\u00EDmbolo", yytext()); }
-  "["     { token("s\u00EDmbolo", yytext()); }
-  "]"     { token("s\u00EDmbolo", yytext()); }
-  "{"     { token("s\u00EDmbolo", yytext()); }
-  "}"     { token("s\u00EDmbolo", yytext()); }
-  ";"     { token("s\u00EDmbolo", yytext()); }
-  ","     { token("s\u00EDmbolo", yytext()); }
-  "."     { token("s\u00EDmbolo", yytext()); }
+  "+"     { return criaSimbolo(sym.PLUS, yytext()); }
+  "-"     { return criaSimbolo(sym.MINUS, yytext()); }
+  "*"     { return criaSimbolo(sym.TIMES, yytext()); }
+  "/"     { return criaSimbolo(sym.SLASH, yytext()); }
+  "%"     { return criaSimbolo(sym.REM, yytext()); }
+  "="     { return criaSimbolo(sym.ASSIGN, yytext()); }
+  "<"     { return criaSimbolo(sym.LSS, yytext()); }
+  ">"     { return criaSimbolo(sym.GTR, yytext()); }
+  "("     { return criaSimbolo(sym.LPAR, yytext()); }
+  ")"     { return criaSimbolo(sym.RPAR, yytext()); }
+  "["     { return criaSimbolo(sym.LBRACK, yytext()); }
+  "]"     { return criaSimbolo(sym.RBRACK, yytext()); }
+  "{"     { return criaSimbolo(sym.LBRACE, yytext()); }
+  "}"     { return criaSimbolo(sym.RBRACE, yytext()); }
+  ";"     { return criaSimbolo(sym.SEMI, yytext()); }
+  ","     { return criaSimbolo(sym.COMMA, yytext()); }
+  "."     { return criaSimbolo(sym.PERIOD, yytext()); }
 
-  /* Espacos em branco */
-  [ \t\r\n]+    { /* ignorar */ }
+  [ \t\r\n]+    { /* ignorar espacos */ }
 
-  /* Caractere nao reconhecido */
-  .       { token("erro", yytext()); }
+  .       { defineErro("Caractere invalido: '" + yytext() + "'"); }
 }
 
 <COMMENT> {
   "*/"    { yybegin(YYINITIAL); }
-  [^*]+   { /* ignorar conteudo do comentario */ }
-  "*"     { /* ignorar asterisco que nao faz parte de fim de comentario */ }
-  <<EOF>> { token("erro", "comentario nao terminado"); return YYEOF; }
+  [^*]+   { /* ignorar */ }
+  "*"     { /* ignorar */ }
+  <<EOF>> { defineErro("Comentario nao terminado"); return criaSimbolo(sym.EOF); }
 }

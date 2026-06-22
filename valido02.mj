@@ -1,0 +1,40 @@
+program Notas
+
+int totalAlunos;
+
+{
+    float calcMedia(float n1, float n2, float n3)
+    {
+        float soma;
+        soma = n1 + n2 + n3;
+        return soma / 3;
+    }
+
+    void avaliar(float media)
+    {
+        if (media >= 6) {
+            print(1);
+        } else {
+            print(0);
+        }
+    }
+
+    void main()
+        int i;
+        float nota1;
+        float nota2;
+        float nota3;
+        float media;
+    {
+        totalAlunos = 5;
+        i = 0;
+        while (i < totalAlunos) {
+            read(nota1);
+            read(nota2);
+            read(nota3);
+            media = calcMedia(nota1, nota2, nota3);
+            avaliar(media);
+            i = i + 1;
+        }
+    }
+}

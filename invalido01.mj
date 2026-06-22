@@ -1,0 +1,21 @@
+program Invalido01
+
+{
+    void maior(int x, int y)
+    {
+        if x > y {
+            print(x);
+        } else {
+            print(y);
+        }
+    }
+
+    void main()
+    {
+        int a;
+        int b;
+        read(a);
+        read(b);
+        maior(a, b);
+    }
+}

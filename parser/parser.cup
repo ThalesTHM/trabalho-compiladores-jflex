@@ -1,0 +1,334 @@
+package parser;
+
+import java_cup.runtime.*;
+import erros.ListaErros;
+
+/* ============================================================
+   Parser MicroJava - CUP
+   ============================================================ */
+
+parser code {:
+
+    private ListaErros listaErros;
+
+    public void setListaErros(ListaErros le) {
+        this.listaErros = le;
+    }
+
+    /* Erro sintático genérico */
+    @Override
+    public void syntax_error(Symbol s) {
+        int linha  = (s.left  > 0) ? s.left  : 0;
+        int coluna = (s.right > 0) ? s.right : 0;
+        defineErro(linha, coluna, "Sintatico - token inesperado (sym=" + s.sym + ")");
+    }
+
+    /* Erro irrecuperável — evitar que o CUP lance exceção sem mensagem */
+    @Override
+    public void unrecovered_syntax_error(Symbol s) throws Exception {
+        // já registrado pelo syntax_error; apenas retorna
+    }
+
+    /* defineErro sobrecarregado com texto adicional */
+    public void defineErro(int linha, int coluna, String mensagem) {
+        if (listaErros != null) {
+            listaErros.adicionar(linha, coluna, mensagem);
+        } else {
+            System.err.println("linha:" + linha + ", coluna:" + coluna + ", " + mensagem);
+        }
+    }
+
+    public void defineErro(Symbol s, String mensagem) {
+        defineErro(s.left, s.right, mensagem);
+    }
+:};
+
+/* ============================================================
+   Terminais
+   ============================================================ */
+
+terminal String  PROGRAM, CLASS, VOID, FINAL, RETURN, IF, ELSE, WHILE, BREAK, NEW, PRINT, READ;
+terminal String  INT, CHAR, FLOAT, NULL;
+terminal String  IDENT;
+terminal Integer NUMBER;
+terminal Float   FLOATNUM;
+
+terminal String  PLUS, MINUS, TIMES, SLASH, REM;
+terminal String  ASSIGN;
+terminal String  EQL, NEQ, LSS, LEQ, GTR, GEQ;
+terminal String  AND, OR;
+terminal String  INC, DEC;
+terminal String  LPAR, RPAR, LBRACK, RBRACK, LBRACE, RBRACE;
+terminal String  SEMI, COMMA, PERIOD;
+terminal         UMINUS;  /* pseudo-token para precedência do menos unário */
+
+/* ============================================================
+   Não-terminais
+   ============================================================ */
+
+non terminal Program;
+non terminal GlobalDeclList, GlobalDecl;
+non terminal ConstDecl;
+non terminal VarDecl, VarDeclList, VarDeclItem;
+non terminal ClassDecl;
+non terminal MethodDeclList, MethodDecl;
+non terminal FormPars, FormParsList;
+non terminal Type;
+non terminal LocalVarList;
+non terminal StatementList, Statement, expr_ptv;
+non terminal Designator, DesignatorSuffix;
+non terminal ActPars, ActParsList;
+non terminal Condition, CondTerm, CondFact;
+non terminal Expr, Term, Factor;
+non terminal RelOp, Addop, Mulop;
+non terminal Conditional;
+
+/* ============================================================
+   Precedências
+   ============================================================ */
+
+precedence left OR;
+precedence left AND;
+precedence left EQL, NEQ;
+precedence left LSS, LEQ, GTR, GEQ;
+precedence left PLUS, MINUS;
+precedence left TIMES, SLASH, REM;
+precedence right UMINUS;
+
+/* ============================================================
+   Gramática
+   ============================================================ */
+
+start with Program;
+
+Program ::=
+      PROGRAM IDENT GlobalDeclList LBRACE MethodDeclList RBRACE
+    ;
+
+/* Declarações globais: constantes, variáveis e classes em qualquer ordem */
+
+GlobalDeclList ::=
+      GlobalDeclList GlobalDecl
+    | /* vazio */
+    ;
+
+GlobalDecl ::=
+      ConstDecl
+    | VarDecl
+    | ClassDecl
+    ;
+
+/* --- Declarações de constantes --- */
+
+ConstDecl ::=
+      FINAL Type IDENT ASSIGN NUMBER SEMI
+    | FINAL Type IDENT ASSIGN FLOATNUM SEMI
+    | FINAL Type IDENT ASSIGN error SEMI
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - Valor invalido na declaracao de constante"); :}
+    ;
+
+/* --- Declarações de variáveis globais --- */
+
+VarDeclList ::=
+      VarDeclList VarDecl
+    | /* vazio */
+    ;
+
+/* Regra de erro 5: VarDecl sem ponto e vírgula */
+VarDecl ::=
+      Type VarDeclItem SEMI
+    | Type VarDeclItem error SEMI
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - Declaracao de variavel sem ponto e virgula"); :}
+    ;
+
+VarDeclItem ::=
+      IDENT
+    | IDENT LBRACK RBRACK
+    ;
+
+/* --- Declarações de classes --- */
+
+ClassDecl ::=
+      CLASS IDENT LBRACE VarDeclList RBRACE
+    ;
+
+/* --- Métodos --- */
+
+MethodDeclList ::=
+      MethodDeclList MethodDecl
+    | /* vazio */
+    ;
+
+MethodDecl ::=
+      Type IDENT LPAR FormPars RPAR LocalVarList LBRACE StatementList RBRACE
+    | VOID IDENT LPAR FormPars RPAR LocalVarList LBRACE StatementList RBRACE
+    ;
+
+FormPars ::=
+      FormParsList
+    | /* vazio */
+    ;
+
+FormParsList ::=
+      Type IDENT
+    | FormParsList COMMA Type IDENT
+    ;
+
+/* --- Variáveis locais --- */
+
+LocalVarList ::=
+      LocalVarList VarDecl
+    | /* vazio */
+    ;
+
+/* --- Bloco de statements --- */
+
+StatementList ::=
+      StatementList Statement
+    | StatementList VarDecl
+    | /* vazio */
+    ;
+
+/* ============================================================
+   Statement — com regras de erro
+   ============================================================ */
+
+Statement ::=
+      Designator ASSIGN Expr SEMI
+    | Designator ASSIGN Expr error
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - Comando de atribuicao sem ponto e virgula"); :}
+    /* chamada de método como statement: foo(); ou obj.foo(); */
+    | Designator LPAR ActPars RPAR SEMI
+    | Designator INC SEMI
+    | Designator DEC SEMI
+    /* Regra de erro 6: return sem ponto e vírgula (regra errada 4.8.1) */
+    | RETURN Expr error
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - return sem ponto e virgula"); :}
+    | RETURN Expr SEMI
+    | RETURN SEMI
+    | RETURN error
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - return sem ponto e virgula"); :}
+    /* Regra de erro 2: WHILE sem parênteses (error token 4.8.2) */
+    | WHILE LPAR Condition RPAR Statement
+    | WHILE error Statement
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - WHILE sem parenteses na condicao"); :}
+    | Conditional
+    | LBRACE StatementList RBRACE
+    | BREAK SEMI
+    | BREAK error
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - break sem ponto e virgula"); :}
+    | PRINT LPAR Expr RPAR SEMI
+    | PRINT LPAR Expr COMMA NUMBER RPAR SEMI
+    | READ LPAR Designator RPAR SEMI
+    /* Regra de erro 3: comando/expressão incompleta (error token 4.8.2) */
+    | expr_ptv
+    ;
+
+/* Expressão seguida de ponto e vírgula — para recuperar erros de statement incompleto */
+expr_ptv ::=
+      error SEMI
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - Comando ou expressao incompleta"); :}
+    ;
+
+/* ============================================================
+   Conditional — IF/ELSE
+   Regra de erro 1: IF sem parênteses (regra errada 4.8.1)
+   ============================================================ */
+
+Conditional ::=
+      IF LPAR Condition RPAR Statement
+    | IF LPAR Condition RPAR Statement ELSE Statement
+    /* IF sem parênteses na condição — regra errada */
+    | IF Condition LBRACE StatementList RBRACE
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - IF sem parenteses"); :}
+    | IF Condition LBRACE StatementList RBRACE ELSE LBRACE StatementList RBRACE
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - IF sem parenteses"); :}
+    ;
+
+/* ============================================================
+   Condition
+   Regra de erro 4: condição sem operador relacional
+   ============================================================ */
+
+Condition ::=
+      CondTerm
+    | Condition OR CondTerm
+    ;
+
+CondTerm ::=
+      CondFact
+    | CondTerm AND CondFact
+    ;
+
+CondFact ::=
+      Expr RelOp Expr
+    /* Regra de erro 4: if (x) sem operador relacional */
+    | Expr
+      {: parser.defineErro(((Symbol)CUP$parser$stack.peek()), "Sintatico - Condicao sem operador relacional"); :}
+    ;
+
+RelOp ::=
+      EQL | NEQ | LSS | LEQ | GTR | GEQ
+    ;
+
+/* ============================================================
+   Expressões
+   ============================================================ */
+
+Expr ::=
+      Term
+    | Expr Addop Term
+    | MINUS Term
+    ;
+
+Term ::=
+      Factor
+    | Term Mulop Factor
+    ;
+
+Factor ::=
+      Designator
+    | Designator LPAR ActPars RPAR
+    | NUMBER
+    | FLOATNUM
+    | CHAR
+    | NULL
+    | NEW IDENT
+    | NEW IDENT LBRACK Expr RBRACK
+    | LPAR Expr RPAR
+    ;
+
+Designator ::=
+      IDENT DesignatorSuffix
+    ;
+
+DesignatorSuffix ::=
+      DesignatorSuffix PERIOD IDENT
+    | DesignatorSuffix LBRACK Expr RBRACK
+    | /* vazio */
+    ;
+
+ActPars ::=
+      ActParsList
+    | /* vazio */
+    ;
+
+ActParsList ::=
+      Expr
+    | ActParsList COMMA Expr
+    ;
+
+Addop ::=
+      PLUS | MINUS
+    ;
+
+Mulop ::=
+      TIMES | SLASH | REM
+    ;
+
+Type ::=
+      IDENT
+    | INT
+    | CHAR
+    | FLOAT
+    ;

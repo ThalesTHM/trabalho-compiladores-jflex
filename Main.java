@@ -1,15 +1,29 @@
 import java.io.*;
+import erros.ListaErros;
 
 class Main {
     public static void main(String[] args) throws Exception {
-        // Lendo a entrada pelo teclado
-        Scanner scanner = new Scanner(System.in);
-        parser parser = new parser(scanner);
+        String nomeArquivo = "valido01.mj";
+        if (args.length >= 1) {
+            nomeArquivo = args[0];
+        }
+
+        ListaErros listaErros = new ListaErros();
+        FileReader in = new FileReader(nomeArquivo);
+        scanner.Scanner scanner = new scanner.Scanner(in, listaErros);
+        parser.parser parser = new parser.parser(scanner);
+        parser.setListaErros(listaErros);
+
         try {
             parser.parse();
-            System.out.println("Arquivo sem erros de sintaxe!");
         } catch (Exception e) {
-            System.out.println("Erro de sintaxe: " + e);
+            // erros já registrados na lista
+        }
+
+        if (listaErros.hasErros()) {
+            listaErros.dump();
+        } else {
+            System.out.println("Programa aceito sem erros!");
         }
     }
 }

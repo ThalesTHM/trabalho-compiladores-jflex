@@ -1,0 +1,18 @@
+# Build artifacts
+*.class
+*.jar
+# Editor backups
+*~
+*.swp
+*.swo
+# Generated scanner backup
+scanner/Scanner.java~
+Scanner.java~
+# Presentations (do not add)
+apresentacao.html
+apresentacao2.html
+# IDE files
+.vscode/
+.idea/
+# Misc
+.DS_Store

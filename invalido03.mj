@@ -1,0 +1,15 @@
+program Invalido03
+
+{
+    void main()
+        int x;
+        int y;
+    {
+        x = 10
+        y = 20;
+        if (x == y) {
+            print(1);
+        }
+        return
+    }
+}

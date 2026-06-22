@@ -1,0 +1,36 @@
+program Biblioteca
+
+final int MAX_LIVROS = 500;
+int totalEmprestimos;
+int disponiveis;
+
+class Livro {
+    int codigo;
+    float preco;
+}
+
+class Leitor {
+    int matricula;
+    int qtdEmprestimos;
+}
+
+{
+    void cadastrar(int cod, float preco)
+        Livro novo;
+    {
+        novo.codigo = cod;
+        novo.preco = preco;
+        totalEmprestimos = totalEmprestimos + 1;
+        disponiveis = MAX_LIVROS - totalEmprestimos;
+        print(disponiveis);
+    }
+
+    void main() {
+        int cod;
+        float preco;
+        read(cod);
+        read(preco);
+        cadastrar(cod, preco);
+        print(totalEmprestimos);
+    }
+}
